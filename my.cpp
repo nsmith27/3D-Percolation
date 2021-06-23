@@ -333,7 +333,7 @@ void createFile(string &path, int size, double p) {
 // Main
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main() {
-	string path = "C:\\Users\\natha\\Desktop\\Coding Challenge June 2021\\Thadeus Submission\\in.txt";
+	string path = "in.txt";
 	int size = 20;  
 	double p = 0.15; 
 	
