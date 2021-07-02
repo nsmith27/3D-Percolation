@@ -1,3 +1,6 @@
+// At its core, the following code solves the 3D percolation challenge using the Union-Find algorithm.
+// Created by Nathanael Smith, June 2021
+
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -7,14 +10,7 @@
 #include <chrono>
 #include <vector>
 
-
 using namespace std;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void readFile(string path);
-void createFile(string &path, int size, double p);
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 class Graph {
 private:
@@ -28,6 +24,7 @@ private:
 	vector<vector<int>> surrounding;
 
 public:
+	// Edges are added to class just for convenience... maybe the don't belong!
 	vector<int> E1;
 	vector<int> E2;
 	vector<int> E3;
@@ -42,18 +39,6 @@ public:
 	vector<int> E12;
 	//Graph();
 	void SetSize(int size) {
-		// s0 -- -- s1 -- -- s2 
-		// -- -- -- -- -- -- --
-		// -- -- -- -- -- -- --
-		// s3 -- -- s4 -- -- s5
-		// -- -- -- -- -- -- --
-		// -- -- -- -- -- -- --
-		// s6 -- -- s7 -- -- s8
-
-		// e0 e1 e2
-		// e3 s? e5 
-		// e6 e7 e8
-
 		this->n = size;
 		this->nn = n * n;
 		this->nnn = nn * n;
@@ -61,8 +46,52 @@ public:
 		this->position = 0;
 		int nnPn = nn + n;
 		int nnMn = nn - n;
-
-		// Surrounding Indexes 
+		// Set V and W to size
+		V.resize(nnn);
+		W.resize(nnn);
+		// Surrounding_Indexes == Current Index - e??
+		// ...See join() within insert()
+		// Indexing can be really confusing.  Below is a diagram 
+		// representing the pattern of sets of elements surrouding 
+		// the current element being read in.  In a 7x7x7 matrix,
+		// element 0 corresponds with sL0.  Elements 1-5 corresponds 
+		// with sL1, and element 6 corresponds with sL2.  Element 49
+		// corresponds with sM0 as does element 98. Elements not on 
+		// the lowest level that are on the left edge and not corners
+		// correspond with sM3.  Hopefully this is enough to see the
+		// pattern.  When reading in a 1, GetSurrounding() will 
+		// identify which set s?? corresponds with current index and 
+		// will later be used to call join for as many connections 
+		// are needed.  
+		// sL0 --- --- sL1 --- --- sL2 
+		// --- --- --- --- --- --- ---
+		// --- --- --- --- --- --- ---
+		// sL3 --- --- sL4 --- --- sL5
+		// --- --- --- --- --- --- ---
+		// --- --- --- --- --- --- ---
+		// sL6 --- --- sL7 --- --- sL8
+		// #
+		// sM0 --- --- sM1 --- --- sM2 
+		// --- --- --- --- --- --- ---
+		// --- --- --- --- --- --- ---
+		// sM3 --- --- sM4 --- --- sM5
+		// --- --- --- --- --- --- ---
+		// --- --- --- --- --- --- ---
+		// sM6 --- --- sM7 --- --- sM8
+		// #
+		// .
+		// .
+		// .
+		// Consider sM4:
+		// eL0  eL1  eL2
+		// eL3  eL4  eL5 
+		// eL6  eL7  eL8
+		// #
+		// eM0  eM1  eM2
+		// eM3  sM4  --- 
+		// ---  ---  ---
+		// Therefore, sM4 contains eL0-eL8 + eM0-eM3
+		// sL4 only contains eM0-eM3
 		int eL0 = nnPn + 1;
 		int eL1 = nnPn;
 		int eL2 = nnPn - 1;
@@ -76,7 +105,6 @@ public:
 		int eM1 = n;
 		int eM2 = n - 1;
 		int eM3 = 1;
-
 		// Sets based on current position
 		vector<int> sL0 = {};
 		vector<int> sL1 = { eM3 };
@@ -96,12 +124,9 @@ public:
 		vector<int> sM6 = { eL1, eL2, eL4, eL5, eM1, eM2 };
 		vector<int> sM7 = { eL0, eL1, eL2, eL3, eL4, eL5, eM0, eM1, eM2, eM3 };
 		vector<int> sM8 = { eL0, eL1, eL3, eL4, eM0, eM1, eM3 };
-		// Set V and W to size
-		V.resize(nnn);
-		W.resize(nnn);
 		// Set the surrouding vector
-		this->surrounding = { sL0, sL1, sL2, sL3, sL4, sL5, sL6, sL7, sL8,
-			sM0, sM1, sM2, sM3, sM4, sM5, sM6, sM7, sM8, };
+		this->surrounding = { 	sL0, sL1, sL2, sL3, sL4, sL5, sL6, sL7, sL8,
+								sM0, sM1, sM2, sM3, sM4, sM5, sM6, sM7, sM8, };
 		// Create groups of indexes to edges
 		for (int i = 0; i < n; i++) {
 			// Bottom 4
@@ -120,7 +145,6 @@ public:
 			E11.push_back(nnn - 1 - i);
 			E12.push_back(nnn - nn + n * i);
 		}
-
 		return;
 	}
 	// 1's are positive connectable nodes, 0's are negative not connectable nodes
@@ -128,7 +152,7 @@ public:
 		W[position] = 1;
 		if (element) {
 			V[position] = position;
-			int s = getSurrounding(position);
+			int s = GetSurrounding(position);
 			for (auto i : surrounding[s]) {
 				if (i < nnn) { join(position, position - i); }
 			}
@@ -140,9 +164,8 @@ public:
 		return;
 	}
 	// Find correct element in vector<int> surrounding
-	int getSurrounding(int x) {
+	int GetSurrounding(int x) {
 		int result{ 0 };
-
 		int h = x / nn;
 		int r = (x - (h * nn)) / n;
 		int c = x % n;
@@ -189,12 +212,12 @@ public:
 	}
 	// Group Find
 	int GroupFind(vector<int> &A, vector<int> &B) {
+		// Bug prone!  If the roots are ever for some reason changed 
+		// while this is running, it may not return 1 as it should... 
 		vector<int> urA;
 		vector<int> urB;
-
 		GetUnique(A, urA);
 		GetUnique(B, urB);
-
 		for (int a : urA) {
 			if (std::find(urB.begin(), urB.end(), a) != urB.end()) {
 				return 1;
@@ -236,7 +259,7 @@ public:
 		}
 		return;
 	}
-	//print edges
+	// Print edges
 	void eprint() {
 		for (int i = 0; i < n; i++) {
 			cout << E1[i] << " - ";
@@ -254,7 +277,6 @@ public:
 			cout << E4[i] << " - ";
 		}
 		cout << endl;
-
 		cout << endl;
 		for (int i = 0; i < n; i++) {
 			cout << E5[i] << " - ";
@@ -272,7 +294,6 @@ public:
 			cout << E8[i] << " - ";
 		}
 		cout << endl;
-
 		cout << endl;
 		for (int i = 0; i < n; i++) {
 			cout << E9[i] << " - ";
@@ -292,11 +313,18 @@ public:
 		cout << endl;
 	}
 
-};
+}; // End of class Graph
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void readFile(string path, Graph &G);
+void createFile(string &path, int size, double p);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 // read data and filter it into Graph object
-void readFile(string path) {
+void readFile(string path, Graph &G) {
 	cout << "Reading from:\t" << path << endl;
-	Graph G;
 	string line;
 	ifstream myfile(path);
 	int size = 0;
@@ -318,41 +346,13 @@ void readFile(string path) {
 		cout << "Failure to open file!" << endl;
 	}
 	myfile.close();
-	// G.vprint();
-	// G.eprint();
-
-	int count = 0;
-
-	if (G.GroupFind(G.E1, G.E11)) {
-		cout << "E1 + E11" << endl;
-		count++;
-	}
-	if (G.GroupFind(G.E2, G.E12)) {
-		cout << "E2 + E12" << endl;
-		count++;
-	}
-	if (G.GroupFind(G.E3, G.E9)) {
-		cout << "E3 + E9" << endl;
-		count++;
-	}
-	if (G.GroupFind(G.E4, G.E10)) {
-		cout << "E4 + E10" << endl;
-		count++;
-	}
-	if (G.GroupFind(G.E5, G.E7)) {
-		cout << "E5 + E7" << endl;
-		count++;
-	}
-	if (G.GroupFind(G.E6, G.E8)) {
-		cout << "E6 + E8" << endl;
-		count++;
-	}
-
-	cout << count << endl;
 	return;
 }
 // For testing, create a file a various size and "1-doping" (p) for 3D cube
 void createFile(string &path, int size, double p) {
+	// Used different path names and didn't want to have to type it out again and again...
+	// Although the problem description asked for reading 'data.txt', Thadeus chose 'in.txt'
+	// ...so you can thank him for this extra path naming confusion!  jkjk
 	path = "created_" + to_string(size) + "_" + to_string(p) + ".txt";
 	path = "in.txt";
 	std::random_device rd;  // Required to obtain seed from random number engine
@@ -388,19 +388,48 @@ void createFile(string &path, int size, double p) {
 // Main
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int main() {
-	string path = "data3.txt";
+	// This instance of size is needed to create the file...represents linear dimension
+	// variable p represents the approximate concentration of 1's in created file
 	int size = 100;
 	double p = 0.12;
-
+	string path = "in.txt";
 	createFile(path, size, p);
-	// path = "in3.txt";
+	
+	// Begin timing the solution
 	auto t0 = std::chrono::steady_clock::now();
-	readFile(path);
+	Graph G;
+	readFile(path, G);
+	// G.vprint();
+	// G.eprint();
+	int count = 0;
+	if (G.GroupFind(G.E1, G.E11)) {
+		cout << "E1 + E11" << endl;
+		count++;
+	}
+	if (G.GroupFind(G.E2, G.E12)) {
+		cout << "E2 + E12" << endl;
+		count++;
+	}
+	if (G.GroupFind(G.E3, G.E9)) {
+		cout << "E3 + E9" << endl;
+		count++;
+	}
+	if (G.GroupFind(G.E4, G.E10)) {
+		cout << "E4 + E10" << endl;
+		count++;
+	}
+	if (G.GroupFind(G.E5, G.E7)) {
+		cout << "E5 + E7" << endl;
+		count++;
+	}
+	if (G.GroupFind(G.E6, G.E8)) {
+		cout << "E6 + E8" << endl;
+		count++;
+	}
+	cout << count << endl;
+	// End time
 	double elapsed_time = (std::chrono::steady_clock::now() - t0).count() / 1e9;
 	cout << "Total Elapsed Time:\t" << elapsed_time << endl << endl;
-
-
-	  system("pause");  
 
 	return 0;
 }
